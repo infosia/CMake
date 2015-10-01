@@ -142,7 +142,7 @@ bool cmGlobalVisualStudio14Generator::InitializeWindowsStore(cmMakefile* mf)
     std::string sdkVersion = GetWindows10SDKVersion();
     if(sdkVersion.empty())
       {
-      e << "Could not find an appropriate version of the Windows 10 SDK"
+      e << "Could not find an appropriate version of the Windows 10 SDK "
         << "installed on this machine";
       mf->IssueMessage(cmake::FATAL_ERROR, e.str());
       return false;
@@ -267,9 +267,18 @@ std::string cmGlobalVisualStudio14Generator::GetWindows10SDKVersion()
         osviex.dwMajorVersion = atoi(tokens[0].c_str());
         osviex.dwMinorVersion = atoi(tokens[1].c_str());
         osviex.dwBuildNumber = atoi(tokens[2].c_str());
-        if (VerifyVersionInfo(&osviex,
-          VER_MAJORVERSION | VER_MINORVERSION | VER_BUILDNUMBER,
-          dwlConditionMask))
+		auto verified = VerifyVersionInfo(&osviex,
+			VER_MAJORVERSION | VER_MINORVERSION /* | VER_BUILDNUMBER */,
+			dwlConditionMask);
+		// VerifyVersionInfo could accept 10 or 6 for major version on Windows 10
+		if (!verified && osviex.dwMajorVersion == 10) {
+			osviex.dwMajorVersion = 6;
+			verified = VerifyVersionInfo(&osviex,
+				VER_MAJORVERSION | VER_MINORVERSION /* | VER_BUILDNUMBER */,
+				dwlConditionMask);
+		}
+
+        if (verified)
           {
           // This is the most recent SDK that we can run safely
           return sdkVersion;
